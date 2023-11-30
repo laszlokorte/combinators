@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Combinators</title>
+<!-- Import blog-cells JS and CSS files. -->
+<link rel="stylesheet" href="assets/blog-cells.css" />
+<script src="assets/babel.min.js"></script>
+<script src="assets/blog-cells.js"></script>
+
+<style>
+main {
+max-width: 40em;
+margin: auto;
+}
+</style>
+</head>
+<body>
+<main>
+<h1>Combinators</h1>
+
+<p>
+Combinators are functions (in the sense of <a href="">lambda calculus</a>) that are defined in terms of nothing but there arguments.
+</p>
+<p>
+	Functions in the sense of the lambda calculus can be thought of as a subset of what is nowadays called <a href="">closures</a> in programming languages like <a href="">javascript</a> or <a href="">python</a>.
+</p>
+<p>
+	Closures in modern programming languages bring all the additional semantics of the respective programming language with them (evaluation order, identifiers, variables, loops, if/else, data types, multiple parameters...)
+</p>
+<p>
+Function in the lambda calculus are much simpler:
+</p>
+<ol>
+<li>They take only a single argument (multiple arguments must be constructed by <a href="">currying</a>)</li>
+<li>The only operation that can happen inside a function is applying functions to arguments (calling function with arguments)</li>
+<li>A Function can not have a name.</li>
+<li>Combinators (a special case of function) may not even access any identifier that is not passed as argument.</li>
+</ol>
+
+<p>The goal of this document is to explore how we can use only combinators to construct a whole lot of arithmetic functions.
+</p>
+<p>We will see that in theory all of computable math can be constructed only from combinators alone.</p>
+
+<h2>A few examples</h2>
+
+For now lets look at a few examples of what counts as lambda function and as combinator and what not:
+</p>
+
+<p>The following is not a lambda calculus function because it makes use of javascript semantics like <code>if/else</code>, <code>return</code>, <code>&gt;</code>, the number <code>20</code>, and multiple arguments:</p>
+
+<script type="text/notebook-cell" data-autorun="true">
+export const NegativeExample1 = (x, y) => {
+	if(x > y * 20) {
+		return true
+	} else {
+		return false;
+	}
+}
+</script>
+
+<p>
+The following is a lambda calculus function since the only thing it does is to call other functions.
+But it is still no combinator because it accesses the <code>alert</code> and <code>sqrt</code> identifiers that are
+assumed to be defined somewhere else but not passed in as arguments:
+</p>
+
+<script type="text/notebook-cell" data-autorun="true">
+export const NegativeExample2 = (x) => alert(sqrt(x))
+</script>
+
+<p>To make it a combinator it would have to look like this:</p>
+
+<script type="text/notebook-cell" data-autorun="true">
+export const NegativeExample3 = (x, alert, sqrt) => alert(sqrt(x))
+</script>
+
+<p>But now it is not a classical lambda function anymore because it takes 3 arguments instead of exactly one.</p>
+
+<p>
+	Lets try again:
+</p>
+
+<script type="text/notebook-cell" data-autorun="true">
+export const PositiveExample = (x) => (alert) => (sqrt) => alert(sqrt(x))
+</script>
+
+<p>
+Now we have a function that is both a lambda function (consists of only one parameter functions and function applications) as well as a combinator (access no identifiers other than the arguments).
+</p>
+
+<h2>Some common real world combinators</h2>
+
+<p>
+	Now you might wonder how useful a function can be that takes only a single argument and can express nothing but function application.
+</p>
+
+<p>
+Below you can see some more examples of combinators. Some of them you might have already seen as helper functions in your own code.
+</p>
+
+<p>
+Note that we assign them to named javascript constats but that these names are not part of the 
+function definition themself but only for us to label them from the outside, in order to talk about them. 
+</p>
+
+<p><strong>Apply</strong> is a combinator that takes two arguments, calls the first argument (assuming it is a function) with the second argument as parameter</p>
+<script type="text/notebook-cell" data-autorun="true">
+export const Apply = a => b => a(b)
+</script>
+
+<p><strong>Identity</strong> takes one argument and simply returns it.</p>
+<script type="text/notebook-cell" data-autorun="true">
+export const Identity = x => x
+console.log(Identity(42))
+</script>
+
+<p>
+	<strong>Compose</strong> takes three arguments, calls the second argument using the third as parameter, then use the result as parameter to call the first argument.
+</p>
+<script type="text/notebook-cell" data-autorun="true">
+export const Compose = a => b => c => a(b(c))
+console.log(Compose(Math.sqrt)(Math.abs)(-25))
+</script>
+
+<p>
+	Note that since in lambda calculus there exist nothing but functions be implicitly assume that all the parameters that are passed to a function are functions themself. This is why when can simply write `b(c)` without even checking what b is.
+</p>
+
+<p>
+	<strong>BinaryCompose</strong> takes four arguments, assumes the second to be a binary function and calls it with the third and fourth argument, then pass the result as parameter to the first argument
+</p>
+<script type="text/notebook-cell" data-autorun="true">
+export const BinaryCompose = a => b => c => d => a(b(c)(d))
+console.log(BinaryCompose(Math.sqrt)(a=>b=>Math.pow(a,b))(5)(2))
+</script>
+
+<p>
+	When we say <em><code>b</code> is a binary function</em>, what we mean is that <code>b</code> is curried, ie. that when applying <code>b</code> to a single argument the result is another function that can then be applied to another argument.
+</p>
+
+<p><strong>Flip</strong> takes 3 arguments, assumes the first to be a binary function and calls it with the two other arguments but in flipped order.</p>
+<script type="text/notebook-cell" data-autorun="true">
+export const Flip = a => b => c => a(c)(b)
+</script>
+
+<p><strong>Const</strong> takes two arguments but always returns the first one in the end. Why is it called const? Because once the first parameter is provided the result is already determined and can not be changed by the second parameter.</p>
+<script type="text/notebook-cell" data-autorun="true">
+export const Const = a => b => a
+console.log(Const(42)(23))
+</script>
+
+<p><strong>On</strong> takes for arguments, the first is assumed to be a binary function the second to be a unariy function. Calls the second function with each the third and fourth argument, then passing both results to the binary function.</p>
+<script type="text/notebook-cell" data-autorun="true">
+export const On = a => b => c => d => a(b(c))(b(d))
+</script>
+
+<p>
+	<strong>S</strong> takes three arguments, the first one being a binary function the second a unariy function. Applies the unary function on the third argument and the pass both the original third argument and the result from the unary function to the binary function
+</p>
+<script type="text/notebook-cell" data-autorun="true">
+export const S = a => b => c => a(c)(b(c))
+</script>
+
+<p>
+You can come up with many more combinators. See <a href="https://github.com/loophp/combinator">https://github.com/loophp/combinator</a>
+for a longer list. 
+</p>
+<p>
+Instead of explicitly defining each combinator, all combinators
+can be composed from a small base set of given combinators. Only two or three combinators
+are enough to build all others (for example S, Const and Identity are sufficient)
+</p>
+
+<p>
+	For example the Identity combinator an be constructed from only the <code>S</code> and <code>Const</code> combinators:
+</p>
+
+<script type="text/notebook-cell" data-autorun="true">
+export const IdentityAlternative = S(Const)(Const)
+export const IdentityAlternativeResult = (c) => Const(c)(Const(c))
+export const IdentityAlternativeResultSimplified = (c) => c
+console.log(IdentityAlternative(42))
+console.log(IdentityAlternativeResult(42))
+console.log(IdentityAlternativeResultSimplified(42))
+
+</script>
+
+<h2>Natural Numbers</h2>
+
+<h3>Zero and One</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// A function (lets call it NatZero) that takes f and x as arguments and just returns x
+// can be used to represent the concept of the number of zero.
+// To understand what is meant by "the concept of zero" it is helpful
+// to ask the question: If f and x are passed to the the NatZero function, how often will f be called?
+// f will not be called at all, i.e. zero times, since the function just returns x
+export const NatZero = f => x => x
+NatZero(console.log)(23)
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// Additionally we can think of a function (lets call it NatOne) that takes two arguments f and x
+// and simply calls f with x as the paramter. This function can be used to represent the concept of the number one.
+// In this case the "concept of one" is expressed by the fact the a parameter f is called exactly one time.
+export const NatOne = f => x => f(x)
+NatOne(console.log)(23)
+</script>
+
+<h3>Successor</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// Now that we have two function definitions that represent the concept of the number zero and the
+// concept of the number one respectively, we can ask if it is possible to define a function that increments
+// the number a given function f is called by one.
+// In other words this function we would like to define takes three arguments: a function n, a function f and some value x
+// We expect the argument n itself to be a binary function that itself encodes the concept of a number.
+// For now think of n as being either NatZero or NatOne as described above.
+// Our new function should now call f one more time than n itself would to.
+// To achieve this we first call the function n with f and x as paramters (resulting f being called so many times as n itself does)
+// and afterwards the pass the result from n to f again in order to call f one more time.
+// This new function we now call OpNatSucc (for successor) because when being passed a number representing function
+// it increases the number represented by the concept of how many times the argument f is called by one.
+export const OpNatSucc = n => f => x => f(n(f)(x))
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// By Applying the OpNatSucc function we can conceptualize numbers greater one.
+export const NatFirst = OpNatSucc(NatZero)
+export const NatSecond = OpNatSucc(NatFirst)
+export const NatThird = OpNatSucc(NatSecond)
+NatFirst(x => {console.log(x); return x;})("Should be logged once")
+NatSecond(x => {console.log(x); return x;})("Should be logged twice")
+NatThird(x => {console.log(x); return x;})("Should be logged thrice")
+</script>
+
+<h3>Addition</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+
+// The next task is to define a function (lets call it OpNatPlus) that takes two arguments a and b (each representing a number in the sense as desribed above) and two arguments f and x
+// and then calls the function f as many times as the a and b would combined would do.
+// In other words this function that represents the addition of two natural numbers.
+// Such a function can be defined as follows:
+// First pass f and x to a (resulting in f being called as many times as a represents)
+// Then pass the result and f to b (resulting in f now being called as many times as b represents)
+// In total we would see f to be called "a+b" times.
+export const OpNatPlus = a => b => f => x => b(f)(a(f)(x))
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// Alternatively we can think of a+b as applying the successor function b times on a: 
+export const OpNatPlusAlternative = a => b => b(OpNatSucc)(a)
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+
+// By making use of the addition we can construct new functions representing larger numbers
+export const NatTwo = OpNatPlus(NatOne)(NatOne)
+export const NatThree = OpNatPlus(NatOne)(NatTwo)
+</script>
+
+<h3>Multiplication</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+
+// Multiplication can be implemented in a similar way:
+// By passing the function b (with f already filled in) itself to a, b(f) is called a times
+// Therefor f will be called a*b times in total.
+export const OpNatMul = a => b => f => x => a(b(f))(x)
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// Alternatively we can think of a*b as adding b "a times" to zero: 
+export const OpNatMulAlternative = a => b => a(OpNatPlus(b))(NatZero)
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+
+// Functions representing even larger numbers can be easily constructed
+export const NatFour = OpNatMul(NatTwo)(NatTwo)
+export const NatFive = OpNatPlus(NatTwo)(NatThree)
+export const NatSix = OpNatMul(NatTwo)(NatThree)
+export const NatSeven = OpNatPlus(NatTwo)(NatFive)
+export const NatEight = OpNatMul(NatTwo)(NatFour)
+export const NatNine = OpNatPlus(NatFive)(NatFour)
+export const NatTen = OpNatMul(NatTwo)(NatFive)
+</script>
+
+<h3>Exponentiation</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+
+// Similar to multiplication the concept exponentiation can be constructed
+// This time by passing a (the base) to b (the exponent) to construct the concept of
+// "multiplying by a b times" and only then passing f to the resul.t
+export const OptNatExp = a => b => f => x => b(a)(f)(x)
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// Alternatively we can think of a to the power of b as multiplying b "a times" with one: 
+export const OptNatExpAlternative = a => b => a(OpNatMul(b))(NatOne)
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// Construct even larger nubers
+export const NatThirtyTwo = OptNatExp(NatTwo)(NatFive)
+export const NatThousandTwentyFour = OptNatExp(NatTwo)(NatTen)
+
+</script>
+
+<h2>Data Structure</h2>
+
+<h3>Pairs</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+
+// Not only numbers can be represented but also more complex data structures
+// the simplest example being a tuple (or pair) encoded as a function that takes three arguments:
+// a left value and the right value and a selector function to which both are passed
+export const StrucPair = l => r => s => s(l)(r)
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// To extract only the right or only the left value from a tuple we can define
+// two functions that take two arguments each but return only one of them.
+export const OpStrucPairLeft = a => b => a
+export const OpStrucPairRight = a => b => b
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// Next we can define a function that takes two arguments f and x, applies f to x but stores both the original x and the result of f(x) into a tuple
+export const KeepArg = f => x => StrucPair(x)(f(x))
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// Next we can define a function that takes a function f and a tuple
+// The right value from the tuple is extracted and passed to the function f
+// Then a new tuple is contructed with the previous right value now on the left side
+// the the result of f() on the right side
+export const OpStrucPairShift = f => p => StrucPair(p(OpStrucPairRight))(f(p(OpStrucPairRight)))
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// A few example tuples can be constructed:
+// A tuple (0,0)
+export const PairZeroZero = StrucPair(NatZero)(NatZero)
+// A tuple (0,1)
+export const PairZeroOne = StrucPair(NatZero)(NatOne)
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// A tuple (1,2) by applying the shift and successor functions to (0,1)
+// The original "1" is moved to the left side the the successor of "1" ("2")
+// is put onto the right side
+export const PairOneTwo = OpStrucPairShift(OpNatSucc)(PairZeroOne)
+
+</script>
+
+<h2>Natural Numbers Continued...</h2>
+
+<h3>Predecessor</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// The predecessor function for natural number n (i.e. n-1) can be thought of as
+// calling the successor function on zero (n-1) times or in other words:
+// to get the predecessor of a number n you can count from zero up to n but stop one step early.
+// To do so the OpStrucPairShift from above fuction can be used to remember the previos argument
+// that the predecessor function was called with.
+// Or in other words construct the tuple (0,0) and increment the right side n times
+// but each time shift the not-yet-incremanted value to the left side
+export const OpNatPred = f => f(OpStrucPairShift(OpNatSucc))(PairZeroZero)(OpStrucPairLeft)
+
+</script>
+
+<h3>Subtraction</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// Now that the predecessor function allows us to decrement a value
+// we can apply it multiple times, i.e. b times, to subtract b from a
+export const OpNatMinus = a => b => b(OpNatPred)(a)
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// And make us of it to construct more large numbers
+export const NatFivehundredTwo = OpNatMinus(OptNatExp(NatTwo)(NatNine))(NatTen)
+export const NatCalcTenMinusTwo = OpNatMinus(NatTen)(NatTwo)
+
+</script>
+
+<h2>Boolean Values: True and False</h2>
+
+<script type="text/notebook-cell" data-autorun="true">
+
+// The boolean values true and false can also be represented as functions.
+// Boolean values can be thought of as the choice between two options
+// So each boolean value can be though of a function that takes two arguments but only
+// returns either one of them.
+// The BoolTrue function returns only the first argument
+export const BoolTrue = a => b => a
+// The BoolFalse returns only the second argument
+export const BoolFalse = a => b => b
+
+</script>
+
+<h3>Negation</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+// Boolean negation takes an argument c (assuming it is a function representing a boolean)
+// and inverts its meaning (true becomes false and false becomes true)
+// This can simply be done by flipping the order of the two arguments passed to the boolean
+export const OpBoolNot = c => a => b => c(b)(a)
+
+</script>
+
+<h3>Conjunction</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// The boolean and functions takes two arguments (each of them being a function representing a boolean)
+// If both arguments are "true" then true should be returned. Otherwise false should be returned
+// Or in other words: if a is false, a should be returned, otherwise whatever b is should be returned
+// This choice can be implemented by passing exactly these two consequences as paramters to the a function.
+export const OpBoolAnd = a => b => a(b)(a)
+
+</script>
+
+
+<h3>Disjunction</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// Similarly the boolean or function takes two arguments.
+// If the first argument is true, true should be returned
+// Otherwise whatever the second argument should be returned
+// As with the boolean and function this choice is implemented by simply
+// passing the two possible choices to the first boolean function
+export const OpBoolOr = a => b => a(a)(b)
+
+</script>
+
+<h3>NAND, NOR, XOR</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// The boolean NAND function is simply first applying AND and then negate the result
+export const OpBoolNAND = a => b => OpBoolNot(OpBoolAnd(a)(b))
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// The boolean NOR function is simply first applying OR and then negate the result
+export const OpBoolNOR = a => b => OpBoolNot(OpBoolOr(a)(b))
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// The boolean XOR function can be defined in terms of OR, NOT and AND:
+// a XOR b iff ((a or b) and (not(a and b)))
+export const OpBoolXOR = a => b => OpBoolAnd(OpBoolOr(a)(b))(OpBoolNot(OpBoolAnd(a)(b)))
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// De Morgans rule can be applied to get an alternative definition.
+export const OpBoolXORAlternative = a => b => OpBoolNot(OpBoolOr(OpBoolNOR(a)(b))(OpBoolAnd(a)(b)))
+
+</script>
+
+<h2>Natural Numbers part 3: Predicates</h2>
+
+<h3>isZero</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// Now that we have prepared functions to encode boolean logic we can make use of it
+// to implement some predicates on our natural numbers
+
+// First we can implement a check that tells us if a given natural number is zero
+// This can be done by taking the boolean true value and passing it through the logicalAnd(..., false)
+// function n times. As soon as the logicalAnd(..., false) function is called one or more times the result
+// will be false. The result will only be false if the logicalAnd is called zero times, i.e. if n is zero.
+export const OpNatPredIsZero = n => n(OpBoolAnd(BoolFalse))(BoolTrue)
+</script>
+
+<h3>Greater or equal to</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// Next we can implement a function that checks if a number a is greater than or equal to a number b.
+// This can be done by simply subtracting a from b and and check if the result is zero.
+// Note that the way we implemented the predecessor function the predecessor of 0 is still 0 by definition
+// This results in (b-a) being zero even if a is actual larger than b.
+export const OpNatPredIsGreaterOrEqual = a => b => OpNatPredIsZero(OpNatMinus(b)(a))
+</script>
+
+<h3>Equality</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+// Now that we have greater-or-equal implemented we can apply it in both directions to check if two numbers are actual equal:
+// (a>=b && b>=a)
+export const OpNatPredIsEqual = a => b => OpBoolAnd(OpNatPredIsGreaterOrEqual(b)(a))(OpNatPredIsGreaterOrEqual(a)(b))
+
+</script>
+
+<h3>Less than (or equal)</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// And together with some boolean functions we can also negate the checks and implement
+// greaterThan, lessOrEqual and lessThan
+export const OpNatPredIsGreater = a => b => OpBoolAnd(OpNatPredIsGreaterOrEqual(a)(b))(OpBoolNot(OpNatPredIsEqual(a)(b)))
+export const OpNatPredIsLessOrEqual = a => b => OpNatPredIsGreaterOrEqual(b)(a)
+export const OpNatPredIsLess = a => b => OpBoolAnd(OpNatPredIsLessOrEqual(a)(b))(OpBoolNot(OpNatPredIsEqual(a)(b)))
+
+</script>
+
+<h2>Datastructures: Linked Lists</h2>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+// Similar to a pair/tuple a list of elements can be constructed.
+// pairs could be nested in a head-tail sructure like so (A, (B, (C, (D, END))))
+// to represent a list with four elements. But note that the right field
+// of the inner most pair needs to be filled with some special marker denoting the end of the
+// list. This is because being a pair it needs to have a right field by construction but
+// the right field must something that is not a pair itself (otherwise it would not be the most inner pair)
+// and it must be no element of the list itself because the elements are to be place into the
+// left field of the pairs.
+
+// So to construct a list we need to embed a choice (read boolean) at at each nesting level to tell
+// us if the list continues. For the end of the list we will simply use the false value:
+export const StrucListEnd = c => e => e
+// To construct a new non-empty list be can wrap an existing list together with a new element.
+// StrucListCons takes four parameters: h (head) is the new element to prepend. t (tail) is the already constructed list.
+// c and e are functions to read the elements back out/process the elements of the list.
+// c is a binary function that is called with two arguments: the head of the list and the already processed tail.
+// e is the value to return if the list is empty.
+// In other words: In order access an already constructed list it has to be called with two arguments:
+// 1) a default value that should be returned if the list is empty
+// 2) and a binary function that acts as a reducer/folder to compress the list back down to a single values
+//
+// From this perspective we can see that a list is simply a nested structure of binarty function calls
+// for that the binary function can be filled in the end and lists elements are prefilled arguments at each nesting level.
+export const StrucListCons = h => t => c => e => c(h)(t(c)(e))
+
+</script>
+
+<h3>Example List</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+// Lets construct a simple example list:
+export const StrucListExample = StrucListCons(NatOne)(StrucListCons(NatTwo)(StrucListCons(NatThree)(StrucListCons(NatFour)(StrucListCons(NatFive)(StrucListEnd)))))
+
+// A lists length can be computed by using zero as default value and calling the successor function for each recursion step (i.e. for each list element).
+export const OpStrucListLength = l => l(Const(OpNatSucc))(NatZero)
+
+</script>
+
+<h3>Map/Reduce/Filter</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+// Map can be implemented by using the empty list as default value and calling StrucListCons at each step to construct
+// a new list of the same length. Additionally each element is passed through the mapping function f
+export const OpStrucListMap = f => l => l(a => b => StrucListCons(f(a))(b))(StrucListEnd)
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// The reduce funtion does not need to be implemented at all because a list is exactly its own reduce function
+export const OpStrucListReduce = f => i => l => l(f)(i)
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// A list can be filtered by using a predicate p to decide for each step if the
+// StrucListCons function or the Identity function should be applied for the reduction
+export const OpStrucListFilter = p => l => l(a => b => p(a)(StrucListCons(a))(Identity)(b))(StrucListEnd)
+
+</script>
+
+<h3>Concatination</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+
+// Two lists can be concatinated by simply using the one list as default value
+// and StrucListCons as binary function to reduce the other list
+export const OpStrucListConcat = l1 => l2 => l1(StrucListCons)(l2)
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+
+// Next we want to reverse a list. A simple way to reverse a list (head, tail) is to concat
+// the reversed tail with the list containing only the head.
+// In other words the order of head and tail must be flipped and the tail itself needs to be reversed.
+
+// First lets define a helper function that constructs a list of length 1 from a single element:
+export const StructListSingleton = e => StrucListCons(e)(StrucListEnd)
+
+</script>
+
+<h3>Reverse</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+// The way the list applys the reduction the second argument to our reduction function is the already processed tail
+// i.e. the already reversed tail. We just need to concat it with the head in the flipped order.
+export const OpStrucListReverse = l => l(head => processedTail => OpStrucListConcat(processedTail)(StructListSingleton(head)))(StrucListEnd)
+
+</script>
+
+<h3>Head</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// To access the head of the list we just need to use a binary function that always returns the
+// left argument (i.e. the current head). But notice that the way the list is implemented it still processes all the nested
+// pairs from the inside out.
+export const OpStrucListHead = l => l(a => b => a)(StrucListEnd)
+
+</script>
+
+<h3>Tail</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// To access the tail of a list we can again make use of the shifting pair trick
+// to remember the previous argument to a repeated function call
+// But this time we want to remember the right argument of a binary function call so we need to
+// implement a binary version of our shifter:
+export const OpStrucPairShiftBinary = f => l => p => StrucPair(p(OpStrucPairRight))(f(l)(p(OpStrucPairRight)))
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// Now we can use the binary shifter to restore the latest argument to our binary reducer call
+export const OpStrucListTail = l => l(OpStrucPairShiftBinary(StrucListCons))(StrucPair(StrucListEnd)(StrucListEnd))(OpStrucPairLeft)
+
+</script>
+
+<h2>Lazy Lists</h2>
+
+<script type="text/notebook-cell" data-autorun="true">
+// An alternative way to implement a list would be to evalute the tail lazyly.
+
+export const StrucLazyListEnd = c => e => e
+export const StrucLazyListCons = h => t => c => e => c(h)(cc => ee => t(cc)(ee))
+
+export const ExampleLazyList = StrucLazyListCons(NatOne)(StrucLazyListCons(NatTwo)(StrucLazyListCons(NatThree)(StrucLazyListCons(NatFour)(StrucLazyListCons(NatFive)(StrucLazyListEnd)))))
+
+// This way both the head and the tail can be accessed without walking down the whole list and processing it from the end:
+export const ExampleLazyListHead = ExampleLazyList(head => tail => head)(StrucLazyListEnd)
+export const ExampleLazyListTail = ExampleLazyList(head => tail => tail)(StrucLazyListEnd)
+
+</script>
+
+<h2>Recursion</h2>
+
+<script type="text/notebook-cell" data-autorun="true">
+
+
+// To process such a lazy list the reducer function needs to recursively walk down the list on
+// its own. such a reducer would need to be defined recursively. Typically a recursive function is one
+// that references itself inside its definition by its own name.
+
+// For example a reduce function for the lazy list would look something like this:
+export const ExampleOpStrucLazyListReduce = f => init => l => l(head => tail => f(head)(tail(ExampleOpStrucLazyListReduce)(init)))(init)
+// But notice how the reduce function itself (ExampleOpStrucLazyListReduce) is passed down to the tail of the list in the `tail(ExampleOpStrucLazyListReduce)` term
+// this only works because by storing the function into the javascript variable called "ExampleOpStrucLazyListReduce".
+// But strictly speaking this is no longer a combinator because the function accesses something that is not provided as argument, namely itself.
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// In all other cases above in which we make use of a previously defined function by its name (eg our definition of OpStrucPairShiftBinary uses the definition StrucPair)
+// it is only done for readability and could technically just as well inline the respective definition.
+// But a recursive function definition can not simply be inlined. Try it and notice how the recursive reference reoccurs one level deeper.
+// Inlining a recursive definition would lead to an infinite syntactic recursion.
+
+// When restricting ourself to the use of combinators it is not possible to
+// reference the functions name inside its body since a combinator function is only allow to refence its arguents
+// and nothing else and inlining the recursive part is not possible. At a first glance one might think that combinators do not allow for any recursion.
+// But this is not the case. It is acutally possible to construct recursive combinators.
+// To see how, take a look at the following function:
+
+</script>
+
+<h3>M Combinator</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// The M combinator takes a function as argument and applies it to itself
+export const M = x => x(x)
+// The argument could be the Identity function.
+// The identity function applied to itself is still the identity function
+export const stillTheIdentity = M(i=>i) // result: (i)=>i
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// We could also try to pass the NatFive function to M combinator:
+export const TestMNatFive = M(NatFive)
+// The result is 3125 == 5^5 because the function NatFive (which calls its argument 5 times)
+// is applied to itself
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// But what happens if we apply the M combinator to itself?
+try {
+	const TestMM = M(M)
+} catch (e) {
+	// This will result in a stack overflow since calling M with itself as parameter
+	// causes and infinite recursion M(M) -> M(M) -> M(M) -> ...
+	console.error(e.message)
+}
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// So we can conclude that at least the M combinator allows to construct a
+// recursive structure. But we did so by first naming the combinator M and then applying it to itself.
+// Could we cause the same recursive overflow without assignen any name to a function?
+// Yes we can by simplx substituting M with its definition:
+
+try {
+	(x => x(x))(x => x(x))
+} catch (e) {
+	// This will also cause a stack overflow.
+	console.error(e.message)
+}
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// But a recursion that never ends is not useful. We need to be able to introduce some condition
+// that triggers a base case and causes the recursion to halt.
+// The following function takes an addition function f as argument and wraps the x(x) call into a
+// closure to make the evaluation lazy. This lazily evalauted call to x(x) is then passed as argument
+// to f. This allows f to decide for each recursive step to decide if the next call to x(x) should actually happen or not
+export const haltingRecursion = f => (x => f(a => x(x)(a)))(x => f(a => x(x)(a)))
+
+</script>
+
+<h3>Y Combinator</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// The definition of the haltingRecursion function above consists of two identical parts "(x => f(a => x(x)(a)))"
+// calling each other. By making use of the M combinator this can be writtern shorter:
+// The common name for this function is the Y combinator.
+export const Y = f => M(x => f(a => x(x)(a)))
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// This Y combinator can now be used to construct any recursive function without requiring the function to be named.
+// For example a function that counts up to ten:
+export const UpToTen = Y(R => x => OpNatPredIsLessOrEqual(NatTen)(x)(_ => x)(_ => R(OpNatSucc(x)))())(NatZero)
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// Now that we can define recursive function we can for example implement factorial(n):
+export const OpNatFactorial = Y(R => n => OpNatPredIsZero(n)(Const(NatOne))((nn) => OpNatMul(nn)(R(OpNatPred(nn))))(n))
+
+</script>
+
+<h2>Lazy Lists</h2>
+
+<script type="text/notebook-cell" data-autorun="true">
+
+// And finally we can implement more interesting functions for processing the elements in the lazy list:
+
+export const OpStrucLazyListHead = l => l(a => b => a)(StrucLazyListEnd)
+
+export const OpStrucLazyListTail = l => l(head => tail => tail)(StrucLazyListEnd)
+
+export const OpStrucLazyListLength = l => l(Y(rec => j => k => OpNatSucc(k(rec)(NatZero))))(NatZero)
+
+export const OpStrucLazyListReduce = f => i => l => l(Y(rec => j => k => f(j)(k(rec)(i))))(i)
+
+export const OpStrucLazyListMap = f => l => l(Y(rec => j => k => StrucLazyListCons(f(j))(k(rec)(StrucLazyListEnd))))(StrucLazyListEnd)
+
+export const OpStrucLazyListFilter = p => l => l(Y(rec => j => k => p(j)(StrucLazyListCons(j))(Identity)(k(rec)(StrucLazyListEnd))))(StrucLazyListEnd)
+
+export const StructLazyListSingleton = e => StrucLazyListCons(e)(StrucLazyListEnd)
+
+export const OpStrucLazyListConcat = l1 => l2 => l1(Y(rec => head => tail => StrucLazyListCons(head)(tail(rec)(l2))))(l2)
+
+export const OpStrucLazyListReverse = l => l(Y(rec => head => tail => OpStrucLazyListConcat(tail(rec)(StrucLazyListEnd))(StructLazyListSingleton(head))))(StrucLazyListEnd)
+
+</script>
+
+<h2>Natural Numbers part 4</h2>
+
+<h3>Division</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+
+// Now that we can construct recursive functions we can construct a iterative natural number division operation:
+
+// For the division we recursively subtract b from a until b is no longer less than a and count how often this is possible.
+export const OPNatDivide = Y(rec => a => b => OpNatPredIsGreaterOrEqual(a)(b)((r) => OpNatSucc(r(OpNatMinus(a)(b))(b)))(Const(NatZero))(rec))
+
+</script>
+
+<h3>Modulus</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// The remainder of a natural number division can be determined by subtractiong b from a as often as possible and then returning what
+// ever remains.
+export const OPNatModulus = Y(rec => a => b => OpNatPredIsGreaterOrEqual(a)(b)((r) => r(OpNatMinus(a)(b))(b))(Const(a))(rec))
+
+</script>
+
+<h3>Square Root</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// Not all natural numbers have square roots that are also natural.
+// But we can define a low and a high square root.
+// The low square root of n is the largest natural number whose square is not greater than n
+// The high square root of n is the smalles natural number whose square is not less than n
+export const OpNatSquareRootLow = n => Y(rec => m => ((OpNatPredIsLessOrEqual(OpNatMul(OpNatSucc(m))(OpNatSucc(m)))(n))(k => rec(OpNatSucc(k)))(Identity))(m))(NatZero)
+export const OpNatSquareRootHigh = n => Y(rec => m => ((OpNatPredIsLess(OpNatMul(m)(m))(n))(k => rec(OpNatSucc(k)))(Identity))(m))(NatZero)
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// We can check if a natural number is a square number. It is a square number if 
+// its high square root and its low square root are the same.
+export const OpNatPredIsSquare = n => OpNatPredIsEqual(OpNatSquareRootLow(n))(OpNatSquareRootHigh(n))
+
+</script>
+
+<h2>Integers, Negative Numbers</h2>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+// You may have noted that in reality natural numbers are not closed neither under division nor under subtraction.
+// That is one natural subtracted from another is does not always give a natural as result.
+// And a natural devided by a natural does not always yield a natural but also a remainder.
+// In our implementations the subtraction falls back to return 0 if a larger number is subtracted from a smaller one
+// And the division returns 0 as well if the divider is greater than the divisor.
+
+// Now you may ask if it is possible to construct not only natural numbers.
+// Up until now we have constructed natural numbers, booleans, tuples, two kinds of lists.
+
+// What about integers including negative numbers? How could we mark a number as negative? One possiblity would be to contruct an integer as a
+// tuple with a boolean as the left element and a natural number as the right element. The boolean would indicate if the integer is negative or positive.
+// Next we would need to reimplement the corresponding versions for Add, Subtract, Multiply, Exp... for integers.
+
+// Another solution would be to store integers not as a single natural numbers combined with a sign but instead as a tuple of two natural numbers.
+// A tuple (a,b) would represent the result of the calculation "a-b". So a positive integer 5 would be represented as (5,0) and a negative 5 would be represented
+// as (0,5). An advantage of this strategy is that the calculations are quite easy to implemented and that this strategy generalizes good to other classes of numbers like fractions.
+// A disadvantage is that a single integer no longer a unique representation (5,0) and (6,1) both represent the integer 5 (because 5-0==6-1).
+// But actually the way that our natural numbers are constructed as composition of function applications their representation is not distinct either.
+// So lets implement the "pair of the naturals" strategy:
+
+</script>
+
+<h3>Convert natural to integer</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// First lets define a function to convert a natural to an integer.
+// Note that even if the naturals are the proper subset of the integers we represent the integer 5 and the natural 5 in two different ways.
+// So from our perspective they are not actual subsets but merely a isomorphism to a subset.
+// toInt(n) = (n,0)
+export const CastNatToInt = n => StrucPair(n)(NatZero)
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+// For converting an integer back to a natural number we could provide and abs() function:
+// abs(a-b) = if(a>b, a-b, b-a)
+export const OpIntAbsNat = i => OpNatPredIsGreaterOrEqual(i(OpStrucPairLeft))(i(OpStrucPairRight))(OpNatMinus)(Flip(OpNatMinus))(i(OpStrucPairLeft))(i(OpStrucPairRight))
+
+</script>
+
+<h3>Successor and Predecessor for Integers</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+export const OpIntSucc = i => StrucPair(OpNatSucc(i(OpStrucPairLeft)))(i(OpStrucPairRight))
+export const OpIntPred = i => StrucPair(i(OpStrucPairRight))(OpNatSucc(i(OpStrucPairRight)))
+
+</script>
+
+<h3>Negation</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+// -(a-b) = (b-a)
+export const OpIntNegate = i => StrucPair(i(OpStrucPairRight))(i(OpStrucPairLeft))
+
+</script>
+
+<h3>Integer Addition</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+// (a1-a2)+(b1-b2) = (a1+b1)-(a2+b2) 
+export const OpIntPlus = a => b => StrucPair(OpNatPlus(a(OpStrucPairLeft))(b(OpStrucPairLeft)))(OpNatPlus(a(OpStrucPairRight))(b(OpStrucPairRight)))
+
+</script>
+
+<h3>Integer Subtraction</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+// (a1-a2)-(b1-b2) = (a1-a2)+(b2-b1) = (a1+b2)-(a2+b1) 
+export const OpIntMinus = a => b => OpIntPlus(a)(OpIntNegate(b))
+</script>
+
+<h3>Integer Multiplication</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+// (a1-a2)(b1-b2) = (a1*b1 + a2*b2) - (a1*b2 + a2*b1)
+export const OpIntMul = a => b => StrucPair
+   (OpNatPlus(OpNatMul(a(OpStrucPairLeft))(b(OpStrucPairLeft)))(OpNatMul(a(OpStrucPairRight))(b(OpStrucPairRight))))
+   (OpNatPlus(OpNatMul(a(OpStrucPairLeft))(b(OpStrucPairRight)))(OpNatMul(a(OpStrucPairRight))(b(OpStrucPairLeft))))
+
+</script>
+
+<h3>Integer Predicates</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+export const OpIntPredIsZero = i => OpNatPredIsEqual(i(OpStrucPairLeft))(i(OpStrucPairRight))
+export const OpIntPredIsPositive = i => OpNatPredIsGreaterOrEqual(i(OpStrucPairLeft))(i(OpStrucPairRight))
+export const OpIntPredIsEqual = a => b => OpIntPredIsZero(OpIntMinus(a)(b))
+</script>
+
+<h3>Integer Division</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+export const OpIntDevide = a => b => OpBoolXOR(OpIntPredIsPositive(a))(OpIntPredIsPositive(b))(OpIntNegate)(Identity)(CastNatToInt((OPNatDivide(OpIntAbsNat(a))(OpIntAbsNat(b)))))
+
+</script>
+
+<h3>Integer Square Root</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+export const OpIntAbsSquareRootLow = i => OpNatSquareRootLow(OpIntAbsNat(i))
+export const OpIntAbsSquareRootHigh = i => OpNatSquareRootHigh(OpIntAbsNat(i))
+export const OpIntPredIsSquare = i => OpBoolAnd(OpIntPredIsPositive(i))(OpNatPredIsEqual(OpIntAbsSquareRootLow(n))(OpIntAbsSquareRootHigh(n)))
+
+</script>
+
+<h2>Quotients</h2>
+
+<h3>Construction</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+
+// Similar we can construct quotients:
+export const CastIntToQuot = i => StrucPair(i)(NatOne)
+export const CastNatToQuot = n => StrucPair(CastNatToInt(n))(NatOne)
+export const QuotientOfTwoInts = a => b => StrucPair(OpIntPredIsPositive(b)(Identity)(OpIntNegate)(a))(OpIntAbsNat(b))
+export const QuotientOfTwoNats = a => b => StrucPair(CastNatToInt(a))(b)
+
+</script>
+
+<h3>Accessing the parts</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+export const OpQuotNumerator = q => q(OpStrucPairLeft)
+export const OpQuotDenuminator = q => q(OpStrucPairRight)
+export const CastQuotToNat = q => OPNatDivide(OpIntAbsNat(OpQuotNumerator(q)))(OpQuotDenuminator(q))
+
+</script>
+
+<h3>Preicates</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+export const OpQuotPredIsZero = i => OpIntPredIsZero(OpQuotNumerator(i))
+export const OpQuotPredIsOne = i => OpIntPredIsEqual(OpQuotNumerator(i))(CastNatToInt(OpQuotDenuminator(i)))
+export const OpQuotPredIsPositive = q => OpIntPredIsPositive(OpQuotNumerator(q))
+</script>
+
+<h3>Unary Operations</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+
+export const OpQuotNegate = i => StrucPair(OpIntNegate(OpQuotNumerator(i)))(OpQuotDenuminator(i))
+export const OpQuotAbs = i => OpQuotPredIsPositive(i)(Identity)(OpQuotNegate)(i)
+export const OpQuotInverse = i => QuotientOfTwoInts(CastNatToInt(OpQuotDenuminator(i)))(OpQuotNumerator(i))
+
+</script>
+
+<h3>Changing the denominator</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+export const OpQuotExtend = i => e => StrucPair(OpIntMul(OpQuotNumerator(i))(CastNatToInt(e)))(OpNatMul(OpQuotDenuminator(i))(e))
+
+</script>
+
+<h3>Quotient Addition</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+// (a1-a2)+(b1-b2) = (a1+b1)-(a2+b2) 
+export const OpQuotPlus = a => b => StrucPair(OpIntPlus(OpIntMul(OpQuotNumerator(a))(CastNatToInt(OpQuotDenuminator(b))))(OpIntMul(OpQuotNumerator(b))(CastNatToInt(OpQuotDenuminator(a)))))(OpNatMul(OpQuotDenuminator(a))(OpQuotDenuminator(b)));
+
+</script>
+
+<h3>Quotient Subtraction</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+// (a1-a2)-(b1-b2) = (a1-a2)+(b2-b1) = (a1+b2)-(a2+b1) 
+export const OpQuotMinus = a => b => StrucPair(OpIntMinus(OpIntMul(OpQuotNumerator(a))(CastNatToInt(OpQuotDenuminator(b))))(OpIntMul(OpQuotNumerator(b))(CastNatToInt(OpQuotDenuminator(a)))))(OpNatMul(OpQuotDenuminator(a))(OpQuotDenuminator(b)));
+
+</script>
+
+<h3>Quotient Multiplication</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+export const OpQuotMul = a => b => StrucPair(OpIntMul(OpQuotNumerator(a))(OpQuotNumerator(b)))(OpNatMul(OpQuotDenuminator(a))(OpQuotDenuminator(b)))
+</script>
+
+<h3>Quotient Equality</h3>
+
+
+
+
+<script type="text/notebook-cell" data-autorun="true">
+export const OpQuotPredIsEqual = q => p => OpIntPredIsEqual
+(OpQuotNumerator(OpQuotExtend(q)(OpQuotDenuminator(p))))
+(OpQuotNumerator(OpQuotExtend(p)(OpQuotDenuminator(q))))
+</script>
+
+<h3>Quotient Division</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+export const OpQuotDevide = a => b => OpQuotMul(a)(OpQuotInverse(b))
+
+</script>
+
+<h3>Quotient Square Root</h3>
+
+<script type="text/notebook-cell" data-autorun="true">
+export const OpQuotAbsSquareRootLow = q => QuotientOfTwoNats(OpIntAbsSquareRootLow(OpQuotNumerator(q)))(OpNatSquareRootLow(OpQuotDenuminator(q)))
+export const OpQuotAbsSquareRootHigh = q => QuotientOfTwoNats(OpIntAbsSquareRootHigh(OpQuotNumerator(q)))(OpNatSquareRootHigh(OpQuotDenuminator(q)))
+export const OpQuotPredIsSquare = q => OpBoolAnd(OpQuotPredIsPositive(q))(OpQuotPredIsEqual(OpQuotAbsSquareRootLow(q))(OpQuotAbsSquareRootHigh(q)))
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+export const OpQuotAbsSquareAproxStepAlternative = q => guess => OpQuotMul(OpQuotPlus(OpQuotDevide(q)(guess))(q))
+															(QuotientOfTwoNats(NatOne)(NatTwo))
+export const OpQuotAbsSquareAproxStep = q => guess => OpQuotMinus(guess)(OpQuotMul(OpQuotMul(OpQuotMinus(OpQuotMul(guess)(guess))(q))(OpQuotInverse(guess)))(QuotientOfTwoNats(NatOne)(NatTwo)))
+export const OpQuotAbsSquareAprox = steps => q => steps(OpQuotAbsSquareAproxStep(q))(OpQuotAbsSquareRootLow(q))
+export const OpQuotAbsSquareAproxSingle = q => OpQuotAbsSquareAprox(NatOne)(q)
+export const OpQuotAbsSquareAproxAuto = q => OpQuotAbsSquareAprox(NatTwo)(q)
+
+</script>
+
+<h2>Complex Numbers</h2>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+
+// Next we can define complex numbers:
+
+export const StrucCompl = re => im => StrucPair(re)(im)
+export const OpComplReal = z => z(OpStrucPairLeft)
+export const OpComplIm = z => z(OpStrucPairRight)
+
+export const CastQuotToCompl = q => StrucPair(q)(CastNatToQuot(NatZero))
+
+export const OpCompNegate = z => StrucPair(OpQuotNegate(OpComplReal(z)))(OpQuotNegate(OpComplIm(z)))
+export const OpComplConj = z => StrucPair(OpComplReal(z))(OpQuotNegate(OpComplIm(z)))
+
+export const OpComplPlus = a => b => StrucPair(OpQuotPlus(OpComplReal(a))(OpComplReal(b)))(OpQuotPlus(OpComplReal(b))(OpComplReal(b)))
+export const OpComplMinus = a => b => StrucPair(OpQuotMinus(OpComplReal(a))(OpComplReal(b)))(OpQuotMinus(OpComplReal(b))(OpComplReal(b)))
+export const OpComplMul = a => b => StrucPair
+	(OpQuotMinus(OpQuotMul(OpComplReal(a))(OpComplReal(b)))(OpQuotMul(OpComplIm(a))(OpComplIm(b))))
+	(OpQuotPlus(OpQuotMul(OpComplReal(a))(OpComplIm(b)))(OpQuotMul(OpComplIm(a))(OpComplReal(b))))
+
+export const OpComplScale = q => z => StrucCompl(OpQuotMul(q)(OpComplReal(z)))(OpQuotMul(q)(OpComplIm(z)))
+
+export const OpComplLengthSquared = z => OpComplReal(OpComplMul(OpComplConj(z))(z))
+
+export const OpComplLength = z => OpQuotAbsSquareAproxAuto(OpComplLengthSquared(z))
+
+export const OpComplDevide = a => b => OpComplScale(OpQuotInverse(OpComplLengthSquared(b)))(OpComplMul(a)(OpComplConj(b)))
+
+</script>
+
+<h2>Interpretation</h2>
+
+<h3>Converting to JavaScript</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+
+
+export const EVAL_INCREMENT = (n) => n + 1
+export const EVAL_ZERO = 0
+export const EVAL_TRUE = true
+export const EVAL_FALSE = false
+export const EvalNatToJS = n => n(EVAL_INCREMENT)(EVAL_ZERO)
+export const EvalIntToJS = i => EvalNatToJS(i(OpStrucPairLeft)) - EvalNatToJS(i(OpStrucPairRight))
+export const EvalBoolToJS = b => b(EVAL_TRUE)(EVAL_FALSE)
+export const EvalQuotToJS = b => (EvalIntToJS(OpQuotNumerator(b))/EvalNatToJS(OpQuotDenuminator(b)))
+export const EvalQuotToJSSign = unit => b => OpQuotPredIsPositive(b)('+')('-') + unit
+export const EvalQuotToJSString = b => EvalIntToJS(OpQuotNumerator(b))+'/'+EvalNatToJS(OpQuotDenuminator(b))
+export const EvalCompToJSString = z => EvalQuotToJS(OpComplReal(z)) + EvalQuotToJSSign('j')(OpComplIm(z)) + EvalQuotToJS(OpQuotAbs(OpComplIm(z)))
+export const EvalListToJS = v => b => '[' + b(j => k => v(j)+','+k)(']')
+export const EvalLazyListToJS = v => b => '[' + b(Y(rec => j => k => v(j)+','+k(rec)(']')))(']')
+
+</script>
+
+<h2>Test Suite</h2>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+//
+// Test Cases:
+//
+
+export function assertEqual(label, a, b) {
+	if(a === b) {
+		console.log('correct: ' + label + '=' + a)
+	} else {
+		console.error('failure:' + label + ' should be ' + a + ' but was ' + b)
+	}
+}
+
+</script>
+
+<script type="text/notebook-cell" data-autorun="true">
+export function assertAprox(label, a, b) {
+	if(Math.abs(a - b) < 0.005) {
+		console.log('correct: ' + label + ' ~ ' + a)
+	} else {
+		console.error('failure:' + label + ' should be aproximately ' + a + ' but was ' + b)
+	}
+}
+
+</script>
+
+<h3>Test Cases</h3>
+
+
+<script type="text/notebook-cell" data-autorun="true">
+assertEqual('NatZero', 0, EvalNatToJS(NatZero))
+assertEqual('NatOne', 1, EvalNatToJS(NatOne))
+assertEqual('NatFirst', 1, EvalNatToJS(NatFirst))
+assertEqual('NatTwo', 2, EvalNatToJS(NatTwo))
+assertEqual('NatSecond', 2, EvalNatToJS(NatSecond))
+assertEqual('NatThree', 3, EvalNatToJS(NatThree))
+assertEqual('NatThird', 3, EvalNatToJS(NatThird))
+assertEqual('NatFour', 4, EvalNatToJS(NatFour))
+assertEqual('NatFive', 5, EvalNatToJS(NatFive))
+assertEqual('NatSix', 6, EvalNatToJS(NatSix))
+assertEqual('NatSeven', 7, EvalNatToJS(NatSeven))
+assertEqual('NatEight', 8, EvalNatToJS(NatEight))
+assertEqual('NatNine', 9, EvalNatToJS(NatNine))
+assertEqual('NatTen', 10, EvalNatToJS(NatTen))
+assertEqual('NatThirtyTwo', 32, EvalNatToJS(NatThirtyTwo))
+assertEqual('NatThousandTwentyFour', 1024, EvalNatToJS(NatThousandTwentyFour))
+assertEqual('PairZeroOne(OpStrucPairLeft)', 0, EvalNatToJS(PairZeroOne(OpStrucPairLeft)))
+assertEqual('PairZeroOne(OpStrucPairRight)', 1, EvalNatToJS(PairZeroOne(OpStrucPairRight)))
+assertEqual('PairOneTwo(OpStrucPairLeft)', 1, EvalNatToJS(PairOneTwo(OpStrucPairLeft)))
+assertEqual('PairOneTwo(OpStrucPairRight)', 2, EvalNatToJS(PairOneTwo(OpStrucPairRight)))
+assertEqual('OpNatPred(NatFive)', 4, EvalNatToJS(OpNatPred(NatFive)))
+assertEqual('NatFivehundredTwo', 502, EvalNatToJS(NatFivehundredTwo))
+
+assertEqual('OpNatPredIsZero(NatZero)', true, EvalBoolToJS(OpNatPredIsZero(NatZero)))
+assertEqual('OpNatPredIsZero(NatOne)', false, EvalBoolToJS(OpNatPredIsZero(NatOne)))
+assertEqual('OpNatPredIsZero(NatTwo)', false, EvalBoolToJS(OpNatPredIsZero(NatTwo)))
+assertEqual('OpNatPredIsGreaterOrEqual(NatZero)(NatZero)', true, EvalBoolToJS(OpNatPredIsGreaterOrEqual(NatZero)(NatZero)))
+assertEqual('OpNatPredIsGreaterOrEqual(NatTen)(NatZero)', true, EvalBoolToJS(OpNatPredIsGreaterOrEqual(NatTen)(NatZero)))
+assertEqual('OpNatPredIsGreaterOrEqual(NatZero)(NatTen)', false, EvalBoolToJS(OpNatPredIsGreaterOrEqual(NatZero)(NatTen)))
+assertEqual('OpNatPredIsGreater(NatZero)(NatZero)', false, EvalBoolToJS(OpNatPredIsGreater(NatZero)(NatZero)))
+assertEqual('OpNatPredIsGreater(NatTen)(NatZero)', true, EvalBoolToJS(OpNatPredIsGreater(NatTen)(NatZero)))
+assertEqual('OpNatPredIsEqual(NatTen)(NatZero)', false, EvalBoolToJS(OpNatPredIsEqual(NatTen)(NatZero)))
+assertEqual('OpNatPredIsEqual(NatTen)(NatTen)', true, EvalBoolToJS(OpNatPredIsEqual(NatTen)(NatTen)))
+
+assertEqual('OpNatPredIsZero(BoolFalse)', true, EvalBoolToJS(OpNatPredIsZero(BoolFalse)))
+assertEqual('TestMNatFive', 3125, EvalNatToJS(TestMNatFive))
+
+assertEqual('UpToTen', 10, EvalNatToJS(UpToTen))
+assertEqual('OpNatFactorial', 120, EvalNatToJS(OpNatFactorial(NatFive)))
+
+assertEqual('OpStrucListLength(StrucListExample)', 5, EvalNatToJS(OpStrucListLength(StrucListExample)))
+assertEqual('OpStrucListLength(OpStrucListMap(Identity)(StrucListExample))', 5, EvalNatToJS(OpStrucListLength(OpStrucListMap(Identity)(StrucListExample))))
+assertEqual('OpStrucListReduce(OpNatPlus)(NatZero)(StrucListExample)', 15, EvalNatToJS(OpStrucListReduce(OpNatPlus)(NatZero)(StrucListExample)))
+assertEqual('OpStrucListMap(Identity)(StrucListExample)', '[1,2,3,4,5,]', EvalListToJS(EvalNatToJS)(OpStrucListMap(Identity)(StrucListExample)))
+assertEqual('OpStrucListMap(OpNatMul(NatTwo))(StrucListExample)', '[2,4,6,8,10,]', EvalListToJS(EvalNatToJS)(OpStrucListMap(OpNatMul(NatTwo))(StrucListExample)))
+assertEqual('OpStrucListConcat(OpStrucListMap(OpNatMul(NatTwo))(StrucListExample))(StrucListExample)', '[2,4,6,8,10,1,2,3,4,5,]', EvalListToJS(EvalNatToJS)(OpStrucListConcat(OpStrucListMap(OpNatMul(NatTwo))(StrucListExample))(StrucListExample)))
+assertEqual('OpStrucListFilter(OpNatPredIsLess(NatThree))(StrucListExample)', '[4,5,]', EvalListToJS(EvalNatToJS)(OpStrucListFilter(OpNatPredIsLess(NatThree))(StrucListExample)))
+assertEqual('OpStrucListReverse(StrucListExample)', '[5,4,3,2,1,]', EvalListToJS(EvalNatToJS)(OpStrucListReverse(StrucListExample)))
+assertEqual('OpStrucListHead(OpStrucListFilter(OpNatPredIsLess(NatThree))(StrucListExample))', 4, EvalNatToJS(OpStrucListHead(OpStrucListFilter(OpNatPredIsLess(NatThree))(StrucListExample))))
+assertEqual('OpStrucListTail(StrucListExample)', '[2,3,4,5,]', EvalListToJS(EvalNatToJS)(OpStrucListTail(StrucListExample)))
+
+assertEqual('OpStrucLazyListHead(ExampleLazyList)', 1, EvalNatToJS(OpStrucLazyListHead(ExampleLazyList)))
+assertEqual('OpStrucLazyListTail(ExampleLazyList)', '[2,3,4,5,]', EvalLazyListToJS(EvalNatToJS)(OpStrucLazyListTail(ExampleLazyList)))
+assertEqual('OpStrucLazyListLength(ExampleLazyList)', 5, EvalNatToJS(OpStrucLazyListLength(ExampleLazyList)))
+assertEqual('OpStrucLazyListLength(ExampleLazyList)', '[5,]', EvalLazyListToJS(EvalNatToJS)(StructLazyListSingleton(NatFive)))
+assertEqual('OpStrucLazyListConcat(OpStrucLazyListMap(OpNatMul(NatTwo))(ExampleLazyList))(ExampleLazyList)', '[2,4,6,8,10,1,2,3,4,5,]', EvalLazyListToJS(EvalNatToJS)(OpStrucLazyListConcat(OpStrucLazyListMap(OpNatMul(NatTwo))(ExampleLazyList))(ExampleLazyList)))
+assertEqual('OpStrucLazyListReverse(ExampleLazyList)', '[5,4,3,2,1,]', EvalLazyListToJS(EvalNatToJS)(OpStrucLazyListReverse(ExampleLazyList)))
+assertEqual('OpStrucLazyListLength(ExampleLazyList)', 5, EvalNatToJS(OpStrucLazyListLength(ExampleLazyList)))
+assertEqual('OpStrucLazyListLength(OpStrucLazyListMap(Identity)(ExampleLazyList))', 5, EvalNatToJS(OpStrucLazyListLength(OpStrucLazyListMap(Identity)(ExampleLazyList))))
+assertEqual('OpStrucLazyListReduce(OpNatPlus)(NatZero)(ExampleLazyList)', 15, EvalNatToJS(OpStrucLazyListReduce(OpNatPlus)(NatZero)(ExampleLazyList)))
+assertEqual('OpStrucLazyListMap(Identity)(ExampleLazyList)', '[1,2,3,4,5,]', EvalLazyListToJS(EvalNatToJS)(OpStrucLazyListMap(Identity)(ExampleLazyList)))
+assertEqual('OpStrucLazyListMap(OpNatMul(NatTwo))(ExampleLazyList)', '[2,4,6,8,10,]', EvalLazyListToJS(EvalNatToJS)(OpStrucLazyListMap(OpNatMul(NatTwo))(ExampleLazyList)))
+assertEqual('OpStrucLazyListFilter(OpNatPredIsLess(NatThree))(ExampleLazyList)', '[4,5,]', EvalLazyListToJS(EvalNatToJS)(OpStrucLazyListFilter(OpNatPredIsLess(NatThree))(ExampleLazyList)))
+
+
+assertEqual('OpIntAbsNat(CastNatToInt(NatZero))', 0, EvalNatToJS(OpIntAbsNat(CastNatToInt(NatZero))))
+assertEqual('OpIntAbsNat(CastNatToInt(NatOne))', 1, EvalNatToJS(OpIntAbsNat(CastNatToInt(NatOne))))
+assertEqual('OpIntAbsNat(CastNatToInt(NatFive))', 5, EvalNatToJS(OpIntAbsNat(CastNatToInt(NatFive))))
+assertEqual('OpIntAbsNat(OpIntNegate(CastNatToInt(NatZero)))', 0, EvalNatToJS(OpIntAbsNat(OpIntNegate(CastNatToInt(NatZero)))))
+assertEqual('OpIntAbsNat(OpIntNegate(CastNatToInt(NatOne)))', 1, EvalNatToJS(OpIntAbsNat(OpIntNegate(CastNatToInt(NatOne)))))
+assertEqual('OpIntAbsNat(OpIntNegate(CastNatToInt(NatFive)))', 5, EvalNatToJS(OpIntAbsNat(OpIntNegate(CastNatToInt(NatFive)))))
+assertEqual('OpIntPredIsZero(OpIntMinus(CastNatToInt(NatFive))(CastNatToInt(NatFive)))', true, EvalBoolToJS(OpIntPredIsZero(OpIntMinus(CastNatToInt(NatFive))(CastNatToInt(NatFive)))))
+assertEqual('OpIntPredIsZero(OpIntMinus(CastNatToInt(NatThree))(CastNatToInt(NatFive)))', false, EvalBoolToJS(OpIntPredIsZero(OpIntMinus(CastNatToInt(NatThree))(CastNatToInt(NatFive)))))
+assertEqual('OpIntAbsNat(OpIntPlus(CastNatToInt(NatFive))(CastNatToInt(NatThree)))', 8, EvalNatToJS(OpIntAbsNat(OpIntPlus(CastNatToInt(NatFive))(CastNatToInt(NatThree)))))
+assertEqual('OpIntAbsNat(OpIntMinus(CastNatToInt(NatFive))(CastNatToInt(NatThree)))', 2, EvalNatToJS(OpIntAbsNat(OpIntMinus(CastNatToInt(NatFive))(CastNatToInt(NatThree)))))
+assertEqual('OpIntAbsNat(OpIntMul(CastNatToInt(NatFive))(CastNatToInt(NatThree)))', 15, EvalNatToJS(OpIntAbsNat(OpIntMul(CastNatToInt(NatFive))(CastNatToInt(NatThree)))))
+assertEqual('OpIntAbsNat(OpIntMul(CastNatToInt(NatEight))(OpIntMinus(CastNatToInt(NatThree))(CastNatToInt(NatFive))))', 16, EvalNatToJS(OpIntAbsNat(OpIntMul(CastNatToInt(NatEight))(OpIntMinus(CastNatToInt(NatThree))(CastNatToInt(NatFive))))))
+assertEqual('OpIntMul(CastNatToInt(NatEight))(OpIntMinus(CastNatToInt(NatThree))(CastNatToInt(NatFive)))', -16, EvalIntToJS(OpIntMul(CastNatToInt(NatEight))(OpIntMinus(CastNatToInt(NatThree))(CastNatToInt(NatFive)))))
+
+
+assertEqual('OpQuotPredIsOne(OpQuotMul(CastNatToQuot(NatFive))(OpQuotInverse(CastNatToQuot(NatFive))))', true, EvalBoolToJS(OpQuotPredIsOne(OpQuotMul(CastNatToQuot(NatFive))(OpQuotInverse(CastNatToQuot(NatFive))))))
+assertEqual('OpQuotPredIsOne(OpQuotMul(CastNatToQuot(NatFive))(OpQuotInverse(CastNatToQuot(NatFive))))', false, EvalBoolToJS(OpQuotPredIsOne(OpQuotMul(CastNatToQuot(NatSix))(OpQuotInverse(CastNatToQuot(NatFive))))))
+
+
+assertEqual('OPNatDivide(NatOne)(NatOne)', 1, EvalNatToJS(OPNatDivide(NatOne)(NatOne)))
+assertEqual('OPNatDivide(NatTen)(NatTwo)', 5, EvalNatToJS(OPNatDivide(NatTen)(NatTwo)))
+assertEqual('OPNatDivide(OpNatSucc(NatTen))(NatTwo)', 5, EvalNatToJS(OPNatDivide(OpNatSucc(NatTen))(NatTwo)))
+assertEqual('OPNatDivide(OpNatSucc(OpNatSucc(NatTen)))(NatTwo)', 6, EvalNatToJS(OPNatDivide(OpNatSucc(OpNatSucc(NatTen)))(NatTwo)))
+assertEqual('OPNatDivide(NatTen)(NatFive)', 2, EvalNatToJS(OPNatDivide(NatTen)(NatFive)))
+
+assertEqual('OPNatModulus(NatOne)(NatOne)', 0, EvalNatToJS(OPNatModulus(NatOne)(NatOne)))
+assertEqual('OPNatModulus(NatTen)(NatTwo)', 0, EvalNatToJS(OPNatModulus(NatTen)(NatTwo)))
+assertEqual('OPNatModulus(OpNatSucc(NatTen))(NatTwo)', 1, EvalNatToJS(OPNatModulus(OpNatSucc(NatTen))(NatTwo)))
+assertEqual('OPNatModulus(OpNatSucc(OpNatSucc(NatTen)))(NatTwo)', 0, EvalNatToJS(OPNatModulus(OpNatSucc(OpNatSucc(NatTen)))(NatTwo)))
+assertEqual('OPNatModulus(NatTen)(NatSix)', 4, EvalNatToJS(OPNatModulus(NatTen)(NatSix)))
+
+
+
+assertEqual('OpIntDevide(CastNatToInt(NatTen))(CastNatToInt(NatFive))', 2, EvalIntToJS(OpIntDevide(CastNatToInt(NatTen))(CastNatToInt(NatFive))))
+assertEqual('OpIntDevide(CastNatToInt(NatTen))(OpIntNegate(CastNatToInt(NatFive)))', -2, EvalIntToJS(OpIntDevide(CastNatToInt(NatTen))(OpIntNegate(CastNatToInt(NatFive)))))
+assertEqual('OpIntDevide(OpIntNegate(CastNatToInt(NatTen)))(OpIntNegate(CastNatToInt(NatFive)))', 2, EvalIntToJS(OpIntDevide(OpIntNegate(CastNatToInt(NatTen)))(OpIntNegate(CastNatToInt(NatFive)))))
+assertEqual('OpIntDevide(OpIntNegate(CastNatToInt(NatTen)))(CastNatToInt(NatFive))', -2, EvalIntToJS(OpIntDevide(OpIntNegate(CastNatToInt(NatTen)))(CastNatToInt(NatFive))))
+
+assertEqual('OpNatSquareRootLow(NatThirtyTwo)', 5, EvalNatToJS(OpNatSquareRootLow(NatThirtyTwo)))
+assertEqual('OpNatSquareRootHigh(NatThirtyTwo)', 6, EvalNatToJS(OpNatSquareRootHigh(NatThirtyTwo)))
+
+
+assertEqual('OpNatSquareRootLow(NatNine)', 3, EvalNatToJS(OpNatSquareRootLow(NatNine)))
+assertEqual('OpNatSquareRootHigh(NatNine)', 3, EvalNatToJS(OpNatSquareRootHigh(NatNine)))
+
+
+assertEqual('OpNatSquareRootLow(NatZero)', 0, EvalNatToJS(OpNatSquareRootLow(NatZero)))
+assertEqual('OpNatSquareRootHigh(NatZero)', 0, EvalNatToJS(OpNatSquareRootHigh(NatZero)))
+assertEqual('OpNatSquareRootLow(NatOne)', 1, EvalNatToJS(OpNatSquareRootLow(NatOne)))
+assertEqual('OpNatSquareRootHigh(NatOne)', 1, EvalNatToJS(OpNatSquareRootHigh(NatOne)))
+
+assertEqual('OpNatPredIsSquare(NatZero)', true, EvalBoolToJS(OpNatPredIsSquare(NatZero)))
+assertEqual('OpNatPredIsSquare(NatOne)', true, EvalBoolToJS(OpNatPredIsSquare(NatOne)))
+assertEqual('OpNatPredIsSquare(NatFour)', true, EvalBoolToJS(OpNatPredIsSquare(NatFour)))
+assertEqual('OpNatPredIsSquare(NatNine)', true, EvalBoolToJS(OpNatPredIsSquare(NatNine)))
+
+
+assertEqual('OpNatPredIsSquare(NatThree)', false, EvalBoolToJS(OpNatPredIsSquare(NatThree)))
+assertEqual('OpNatPredIsSquare(NatFive)', false, EvalBoolToJS(OpNatPredIsSquare(NatFive)))
+assertEqual('OpNatPredIsSquare(NatSix)', false, EvalBoolToJS(OpNatPredIsSquare(NatSix)))
+assertEqual('OpNatPredIsSquare(NatEight)', false, EvalBoolToJS(OpNatPredIsSquare(NatEight)))
+
+
+
+
+assertEqual('OpQuotPredIsEqual(QuotientOfTwoInts(CastNatToInt(NatFive))(CastNatToInt(NatTen)))(QuotientOfTwoInts(CastNatToInt(NatOne))(CastNatToInt(NatTwo)))', true, EvalBoolToJS(OpQuotPredIsEqual(QuotientOfTwoInts(CastNatToInt(NatFive))(CastNatToInt(NatTen)))(QuotientOfTwoInts(CastNatToInt(NatOne))(CastNatToInt(NatTwo)))))
+assertEqual('OpQuotPredIsEqual(QuotientOfTwoInts(CastNatToInt(NatSix))(CastNatToInt(NatTen)))(QuotientOfTwoInts(CastNatToInt(NatOne))(CastNatToInt(NatTwo)))', false, EvalBoolToJS(OpQuotPredIsEqual(QuotientOfTwoInts(CastNatToInt(NatSix))(CastNatToInt(NatTen)))(QuotientOfTwoInts(CastNatToInt(NatOne))(CastNatToInt(NatTwo)))))
+
+assertEqual('OpQuotMinus(QuotientOfTwoInts(CastNatToInt(NatFive))(CastNatToInt(NatTen)))(QuotientOfTwoInts(CastNatToInt(NatOne))(CastNatToInt(NatTwo)))', 0, EvalQuotToJS(OpQuotMinus(QuotientOfTwoInts(CastNatToInt(NatFive))(CastNatToInt(NatTen)))(QuotientOfTwoInts(CastNatToInt(NatOne))(CastNatToInt(NatTwo)))))
+assertEqual('OpQuotMinus(QuotientOfTwoInts(CastNatToInt(NatSix))(CastNatToInt(NatTen)))(QuotientOfTwoInts(CastNatToInt(NatOne))(CastNatToInt(NatFive)))', 0.4, EvalQuotToJS(OpQuotMinus(QuotientOfTwoInts(CastNatToInt(NatSix))(CastNatToInt(NatTen)))(QuotientOfTwoInts(CastNatToInt(NatOne))(CastNatToInt(NatFive)))))
+
+
+assertEqual('OpQuotAbsSquareRootLow(QuotientOfTwoInts(CastNatToInt(NatNine))(CastNatToInt(NatFour)))', '3/2', EvalQuotToJSString(OpQuotAbsSquareRootLow(QuotientOfTwoInts(CastNatToInt(NatNine))(CastNatToInt(NatFour)))))
+assertEqual('OpQuotAbsSquareRootHigh(QuotientOfTwoInts(CastNatToInt(NatNine))(CastNatToInt(NatFour)))', '3/2', EvalQuotToJSString(OpQuotAbsSquareRootHigh(QuotientOfTwoInts(CastNatToInt(NatNine))(CastNatToInt(NatFour)))))
+assertEqual('OpQuotPredIsSquare(QuotientOfTwoInts(CastNatToInt(NatNine))(CastNatToInt(NatFour)))', true, EvalBoolToJS(OpQuotPredIsSquare(QuotientOfTwoInts(CastNatToInt(NatNine))(CastNatToInt(NatFour)))))
+assertEqual('OpQuotPredIsSquare(QuotientOfTwoInts(CastNatToInt(NatTen))(CastNatToInt(NatFour)))', false, EvalBoolToJS(OpQuotPredIsSquare(QuotientOfTwoInts(CastNatToInt(NatTen))(CastNatToInt(NatFour)))))
+
+assertEqual('OpQuotAbsSquareAproxAuto(QuotientOfTwoInts(CastNatToInt(NatNine))(CastNatToInt(NatOne)))', 3, EvalQuotToJS(OpQuotAbsSquareAproxAuto(QuotientOfTwoInts(CastNatToInt(NatNine))(CastNatToInt(NatOne)))))
+assertEqual('OpQuotAbsSquareAproxAuto(QuotientOfTwoInts(CastNatToInt(NatFour))(CastNatToInt(NatOne)))', 2, EvalQuotToJS(OpQuotAbsSquareAproxAuto(QuotientOfTwoInts(CastNatToInt(NatFour))(CastNatToInt(NatOne)))))
+assertAprox('OpQuotAbsSquareAproxAuto(QuotientOfTwoInts(CastNatToInt(NatTwo))(CastNatToInt(NatOne)))', 1.42, EvalQuotToJS(OpQuotAbsSquareAproxAuto(QuotientOfTwoInts(CastNatToInt(NatTwo))(CastNatToInt(NatOne)))))
+
+assertEqual('OpQuotPredIsPositive(OpComplIm(StrucCompl(CastNatToQuot(NatOne))(CastNatToQuot(NatOne))))', true, EvalBoolToJS(OpQuotPredIsPositive(OpComplIm(StrucCompl(CastNatToQuot(NatOne))(CastNatToQuot(NatOne))))))
+assertEqual('StrucCompl(CastNatToQuot(NatOne))(CastNatToQuot(NatOne))', '1+j1', EvalCompToJSString(StrucCompl(CastNatToQuot(NatOne))(CastNatToQuot(NatOne))))
+assertAprox('StrucCompl(CastNatToQuot(NatOne))(CastNatToQuot(NatOne))', 1.42, EvalQuotToJS(OpComplLength(StrucCompl(CastNatToQuot(NatOne))(CastNatToQuot(NatOne)))))
+assertEqual('OpComplDevide(StrucCompl(CastNatToQuot(NatOne))(CastNatToQuot(NatOne)))(StrucCompl(CastNatToQuot(NatOne))(CastNatToQuot(NatOne)))', '1+j0', EvalCompToJSString(OpComplDevide(StrucCompl(CastNatToQuot(NatOne))(CastNatToQuot(NatOne)))(StrucCompl(CastNatToQuot(NatOne))(CastNatToQuot(NatOne)))))
+assertEqual('OpComplDevide(StrucCompl(CastNatToQuot(NatOne))(CastNatToQuot(NatZero)))(StrucCompl(CastNatToQuot(NatZero))(CastNatToQuot(NatOne)))', '0-j1', EvalCompToJSString(OpComplDevide(StrucCompl(CastNatToQuot(NatOne))(CastNatToQuot(NatZero)))(StrucCompl(CastNatToQuot(NatZero))(CastNatToQuot(NatOne)))))
+</script>
+
+
+
+</main>
+</body>
+</html>
