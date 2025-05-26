@@ -23,10 +23,10 @@ margin: 0 auto 5em;
 <p>This page is inspired by the talk <a href="https://www.youtube.com/watch?v=6BnVo7EHO_8"><em>A Flock of functions</em> by Gabriel Lebec</a></p>
 
 <p>
-<a href="https://plato.stanford.edu/entries/logic-combinatory/">Combinators</a> are functions (in the sense of <a href="">lambda calculus</a>) that are defined in terms of nothing but there arguments.
+<a href="https://plato.stanford.edu/entries/logic-combinatory/">Combinators</a> are functions (in the sense of <a href="https://plato.stanford.edu/entries/lambda-calculus/">lambda calculus</a>) that are defined in terms of nothing but there arguments.
 </p>
 <p>
-	Functions in the sense of the lambda calculus can be thought of as a subset of what is nowadays called <a href="">closures</a> in programming languages like <a href="">JavaScript</a> or <a href="">python</a>.
+	Functions in the sense of the lambda calculus can be thought of as a subset of what is nowadays called <a href="https://en.wikipedia.org/wiki/Closure_(computer_programming)">closures</a> in programming languages like <a href="https://262.ecma-international.org/">JavaScript</a> or <a href="https://www.python.org/">Python</a>.
 </p>
 <p>
 	Closures in modern programming languages bring all the additional semantics of the respective programming language with them (evaluation order, identifiers, variables, loops, if/else, data types, multiple parameters...)
@@ -35,22 +35,22 @@ margin: 0 auto 5em;
 Function in the lambda calculus are much simpler:
 </p>
 <ol>
-<li>They take only a single argument (multiple arguments must be constructed by <a href="">currying</a>)</li>
+<li>They take only a <em>single argument</em> (multiple arguments must be constructed by <a href="https://en.wikipedia.org/wiki/Currying">currying</a>)</li>
 <li>The only operation that can happen inside a function is applying functions to arguments (calling function with arguments)</li>
-<li>A Function can not have a name.</li>
-<li>Combinators (a special case of function) may not even access any identifier that is not passed as argument.</li>
+<li>A <em>function</em> does not have a name.</li>
+<li>A <em>combinator</em> (a special kind of function) may not even access any identifier that is not passed as argument.</li>
 </ol>
 
-<p>The goal of this document is to explore how we can use only combinators to construct a whole lot of arithmetic functions.
+<p>The goal of this document is to explore how we can use only <em>combinators</em> to construct a whole lot of arithmetic functions.
 </p>
-<p>We will see that in theory all of computable math can be constructed only from combinators alone.</p>
+<p>We will see that in theory all of computable math can be constructed only from <em>combinators</em> alone.</p>
 
 <h2>A few examples</h2>
 
-For now lets look at a few examples of what counts as lambda function and as combinator and what not:
+For now, lets take a look at a few examples to show what counts as <em>lambda function</em>, and as <em>combinator</em>, and what does not:
 </p>
 
-<p>The following is not a lambda calculus function because it makes use of JavaScript semantics like <code>if/else</code>, <code>return</code>, <code>&gt;</code>, the number <code>20</code>, and multiple arguments:</p>
+<p>The following <em>is not</em> a lambda calculus function because it makes use of JavaScript semantics like <code>if/else</code>, <code>return</code>, <code>&gt;</code>, the number <code>20</code>, and multiple arguments:</p>
 
 <script type="text/notebook-cell" data-autorun="true">
 export const NegativeExample1 = (x, y) => {
@@ -63,9 +63,9 @@ export const NegativeExample1 = (x, y) => {
 </script>
 
 <p>
-The following is a lambda calculus function since the only thing it does is to call other functions.
-But it is still no combinator because it accesses the <code>alert</code> and <code>sqrt</code> identifiers that are
-assumed to be defined somewhere else but not passed in as arguments:
+
+In contrast the following <em>is</em> a lambda calculus function since the only thing it does is to call other functions.
+But it is still no combinator because it accesses the <code>alert</code> and <code>sqrt</code> identifiers. These are assumed to be defined somewhere else but not passed in as arguments:
 </p>
 
 <script type="text/notebook-cell" data-autorun="true">
@@ -78,7 +78,7 @@ export const NegativeExample2 = (x) => alert(sqrt(x))
 export const NegativeExample3 = (x, alert, sqrt) => alert(sqrt(x))
 </script>
 
-<p>But now it is not a classical lambda function anymore because it takes 3 arguments instead of exactly one.</p>
+<p>But now it is not a classical lambda function anymore because now the function takes 3 arguments instead of exactly one.</p>
 
 <p>
 	Lets try again:
@@ -89,37 +89,36 @@ export const PositiveExample = (x) => (alert) => (sqrt) => alert(sqrt(x))
 </script>
 
 <p>
-Now we have a function that is both a lambda function (consists of only one parameter functions and function applications) as well as a combinator (access no identifiers other than the arguments).
+Now we have a function that is both a lambda function (consists of only one parameter functions and function applications) as well as a combinator (accesses no identifiers other than the arguments).
 </p>
 
 <h2>Some common real world combinators</h2>
 
 <p>
-	Now you might wonder how useful a function can be that takes only a single argument and can express nothing but function application.
+	Now you might wonder how useful such a function can be, which takes only a single argument and may express nothing but function application.
 </p>
 
 <p>
-Below you can see some more examples of combinators. Some of them you might have already seen as helper functions in your own code.
+Below you can find some more examples of combinators. Some of them you might have already seen as helper functions in your own code.
 </p>
 
 <p>
-Note that we assign them to named JavaScript constats but that these names are not part of the 
-function definition themself but only for us to label them from the outside, in order to talk about them. 
+Note that we assign them to named JavaScript constants. These names are not part of the function definition itself but only for us to label them from the outside, in order to talk about them. Remember: A lambda function has no name.
 </p>
 
-<p><strong>Apply</strong> is a combinator that takes two arguments, calls the first argument (assuming it is a function) with the second argument as parameter</p>
+<p><strong>Apply</strong> is a combinator that takes two arguments, and calls the first argument (assuming it is a function) with the second argument as parameter</p>
 <script type="text/notebook-cell" data-autorun="true">
 export const Apply = a => b => a(b)
 </script>
 
-<p><strong>Identity</strong> takes one argument and simply returns it.</p>
+<p><strong>Identity</strong> takes one argument and simply returns it as the result.</p>
 <script type="text/notebook-cell" data-autorun="true">
 export const Identity = x => x
 console.log(Identity(42))
 </script>
 
 <p>
-	<strong>Compose</strong> takes three arguments, calls the second argument using the third as parameter, then use the result as parameter to call the first argument.
+	<strong>Compose</strong> takes three arguments, calls the second argument using the third as parameter, then uses the result as parameter to call the first argument.
 </p>
 <script type="text/notebook-cell" data-autorun="true">
 export const Compose = a => b => c => a(b(c))
@@ -127,11 +126,11 @@ console.log(Compose(Math.sqrt)(Math.abs)(-25))
 </script>
 
 <p>
-	Note that since in lambda calculus there exist nothing but functions be implicitly assume that all the parameters that are passed to a function are functions themself. This is why when can simply write <code>b(c)</code> without even checking what b is.
+	Note that, since in lambda calculus there exists nothing but functions, we implicitly assume that all the parameters that are passed to a function are functions themself. This is why when can simply write <code>b(c)</code> without even checking what b is.
 </p>
 
 <p>
-	<strong>BinaryCompose</strong> takes four arguments, assumes the second to be a binary function and calls it with the third and fourth argument, then pass the result as parameter to the first argument
+	<strong>BinaryCompose</strong> takes four arguments. It assumes the second to be a binary function and calls it with the third and fourth argument, then pass the result as parameter to the first argument.
 </p>
 <script type="text/notebook-cell" data-autorun="true">
 export const BinaryCompose = a => b => c => d => a(b(c)(d))
@@ -147,32 +146,31 @@ console.log(BinaryCompose(Math.sqrt)(a=>b=>Math.pow(a,b))(5)(2))
 export const Flip = a => b => c => a(c)(b)
 </script>
 
-<p><strong>Const</strong> takes two arguments but always returns the first one in the end. Why is it called const? Because once the first parameter is provided the result is already determined and can not be changed by the second parameter.</p>
+<p><strong>Const</strong> takes two arguments but always returns the first one in the end. Why is it called <strong>Const</strong>? Because once the first parameter is provided the result is already determined and can not be changed by the second parameter.</p>
 <script type="text/notebook-cell" data-autorun="true">
 export const Const = a => b => a
 console.log(Const(42)(23))
 </script>
 
-<p><strong>On</strong> takes for arguments, the first is assumed to be a binary function the second to be a unariy function. Calls the second function with each the third and fourth argument, then passing both results to the binary function.</p>
+<p><strong>On</strong> takes four arguments. The first is assumed to be a binary function. The second is assumed to be a unariy function. The second function is called with each the third and fourth argument, then passing both results to the binary function.</p>
 <script type="text/notebook-cell" data-autorun="true">
 export const On = a => b => c => d => a(b(c))(b(d))
 </script>
 
 <p>
-	<strong>S</strong> takes three arguments, the first one being a binary function the second a unariy function. Applies the unary function on the third argument and the pass both the original third argument and the result from the unary function to the binary function
+	<strong>S</strong> takes three arguments, the first one being a binary function the second a unariy function. It applies the unary function on the third argument and then passes both the original third argument and the result of the unary function to the binary function
 </p>
 <script type="text/notebook-cell" data-autorun="true">
 export const S = a => b => c => a(c)(b(c))
 </script>
 
 <p>
-You can come up with many more combinators. See <a href="https://github.com/loophp/combinator">this page</a>
-for a longer list. 
+You can come up with many more combinators. See <a href="https://github.com/loophp/combinator">this page</a> for a longer list. 
 </p>
+
 <p>
-Instead of explicitly defining each combinator, all combinators
-can be composed from a small base set of given combinators. Only two or three combinators
-are enough to build all others (for example S, Const and Identity are sufficient)
+Instead of explicitly defining each combinator on its own, all combinators
+can be composed from a small base set of given combinators. Only two or three combinators are enough to build all the others (for example S, Const and Identity are sufficient).
 </p>
 
 <p>
@@ -195,7 +193,23 @@ console.log(IdentityAlternativeResult(42))
 console.log(IdentityAlternativeResultSimplified(42))
 </script>
 
+<p>
+	Notice how in the definition of <code>IdentityAlternative</code> above we <em>define a function</em> but we do not use the <code>(_) => _</code> arrow syntax. This is what is meant when we say that a function is constructed by other combinators.
+</p>
+
+<p>
+	This style of not using the <code>(_) => _</code> arrow syntax for defining a function is called <a href="https://en.wikipedia.org/wiki/Tacit_programming">point-free style or tacit programing.</a> One advantage of this style is that we do not need to come up with an arbitrary name for the functions parameter. 
+</p>
+
+<p>
+	The same way that functions got not get named in lambda calculus, function parameters are not named in tacit programming style.
+</p>
+
 <h2>Natural Numbers</h2>
+
+<p>
+	If all we can work with are functions, and even all the parameters of a function must be functions itself, you could wonder how to do useful calculations, like adding two numbers or multiplying two numbers.
+</p>
 
 <h3>Zero and One</h3>
 
