@@ -1,6 +1,6 @@
 # Lambda Calculus and Combinators
 
-<img src="./favicon.svg" alt="Lambda" />
+<img width="100" src="./favicon.svg" alt="Lambda" />
 
 <p>This page is inspired by the talk <a href="https://www.youtube.com/watch?v=6BnVo7EHO_8"><em>A Flock of functions</em> by Gabriel Lebec</a></p>
 
